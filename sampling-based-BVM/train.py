@@ -50,8 +50,10 @@ predictive_net_optimizer = torch.optim.Adam(predictive_net_params, opt.lr_dis)
 
 
 ##SMOKE5K ##
-image_root='/dataset/img/'
-gt_root='/dataset/img/'
+image_root='/home/users/u5155914/projects/SMOKE5K/train/img/'
+gt_root='/home/users/u5155914/projects/SMOKE5K/train/gt/'
+# image_root='/dataset/img/'
+# gt_root='/dataset/img/'
 
 train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize, trainsize=opt.trainsize)
 total_step = len(train_loader)
@@ -91,11 +93,11 @@ for epoch in range(1, (opt.epoch+1)):
     loss_record = AvgMeter()
     loss_record_dis = AvgMeter()
     print('Generator Learning Rate: {}'.format(generator_optimizer.param_groups[0]['lr']))
-    print('Discriminator Learning Rate: {}'.format(var_approx_net_optimizer.param_groups[0]['lr']))
+    print('Discriminator Learning Rate: {}'.format(predictive_net_optimizer.param_groups[0]['lr']))
     for i, pack in enumerate(train_loader, start=1):
         for rate in size_rates:
             generator_optimizer.zero_grad()
-            var_approx_net_optimizer.zero_grad()
+            predictive_net_optimizer.zero_grad()
             images, gts = pack
             images = Variable(images)
             gts = Variable(gts)
@@ -147,7 +149,7 @@ for epoch in range(1, (opt.epoch+1)):
             var_map_approx=F.upsample(var_map_approx, size=(trainsize, trainsize), mode='bilinear', align_corners=True)
             consist_loss = mse_loss(torch.sigmoid(var_map_approx), var_map_real)
             consist_loss.backward()
-            var_approx_net_optimizer.step()
+            predictive_net_optimizer.step()
             
 
             folder_path = 'visual_map_final/vis_e' + str(epoch) + '/'
