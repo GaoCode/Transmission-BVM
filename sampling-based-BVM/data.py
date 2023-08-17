@@ -1,10 +1,11 @@
 import os
-from PIL import Image
+import random
+
+import numpy as np
+import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
-import random
-import numpy as np
-from PIL import ImageEnhance
+from PIL import Image, ImageEnhance
 
 
 # several data augumentation strategies
@@ -25,9 +26,10 @@ def randomCrop(img_r, label_r):
     image_height = img_r.size[1]
     crop_win_width = np.random.randint(image_width - border, image_width)
     crop_win_height = np.random.randint(image_height - border, image_height)
-    random_region = (
-        (image_width - crop_win_width) >> 1, (image_height - crop_win_height) >> 1, (image_width + crop_win_width) >> 1,
-        (image_height + crop_win_height) >> 1)
+    random_region = ((image_width - crop_win_width) >> 1,
+                     (image_height - crop_win_height) >> 1,
+                     (image_width + crop_win_width) >> 1,
+                     (image_height + crop_win_height) >> 1)
     return img_r.crop(random_region), label_r.crop(random_region)
 
 
@@ -53,6 +55,7 @@ def colorEnhance(image):
 
 
 def randomGaussian(image, mean=0, sigma=0.15):
+
     def gaussianNoisy(im, mean=mean, sigma=sigma):
         for _i in range(len(im)):
             im[_i] += random.gauss(mean, sigma)
@@ -64,7 +67,9 @@ def randomGaussian(image, mean=0, sigma=0.15):
     img = img.reshape([width, height])
     return Image.fromarray(np.uint8(img))
 
+
 def randomGaussian1(image, mean=0.1, sigma=0.35):
+
     def gaussianNoisy(im, mean=mean, sigma=sigma):
         for _i in range(len(im)):
             im[_i] += random.gauss(mean, sigma)
@@ -97,14 +102,22 @@ def randomPeper(img):
 
 
 # dataset for training
-# The current loader is not using the normalized depth maps for training and test. If you use the normalized depth maps
-# (e.g., 0 represents background and 1 represents foreground.), the performance will be further improved.
+# The current loader is not using the normalized depth maps for training and
+# test. If you use the normalized depth maps
+# (e.g., 0 represents background and 1 represents foreground.),
+# the performance will be further improved.
 class SalObjDataset(data.Dataset):
+
     def __init__(self, right_image_root, right_gt_root, trainsize):
         self.trainsize = trainsize
-        self.right_images = [right_image_root + f for f in os.listdir(right_image_root) if f.endswith('.jpg')]
-        self.right_gts = [right_gt_root + f for f in os.listdir(right_gt_root) if f.endswith('.jpg')
-                    or f.endswith('.png')]
+        self.right_images = [
+            right_image_root + f for f in os.listdir(right_image_root)
+            if f.endswith('.jpg')
+        ]
+        self.right_gts = [
+            right_gt_root + f for f in os.listdir(right_gt_root)
+            if f.endswith('.jpg') or f.endswith('.png')
+        ]
 
         self.right_images = sorted(self.right_images)
         self.right_gts = sorted(self.right_gts)
@@ -114,33 +127,34 @@ class SalObjDataset(data.Dataset):
         self.img_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
         self.gt_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor()])
+            transforms.ToTensor()
+        ])
 
     def __getitem__(self, index):
         right_image = self.rgb_loader(self.right_images[index])
         right_gt = self.binary_loader(self.right_gts[index])
         right_image, right_gt = cv_random_flip(right_image, right_gt)
         right_image, right_gt = randomCrop(right_image, right_gt)
-        right_image, right_gt  = randomRotation(right_image, right_gt)
+        right_image, right_gt = randomRotation(right_image, right_gt)
         right_image = colorEnhance(right_image)
         # gt=randomGaussian(gt)
         right_gt = randomPeper(right_gt)
         right_image = self.img_transform(right_image)
         right_gt = self.gt_transform(right_gt)
 
-
         return right_image, right_gt
-
 
     def filter_files(self):
         assert len(self.right_images) == len(self.right_gts)
         right_images = []
         right_gts = []
 
-        for right_img_path, right_gt_path in zip(self.right_images, self.right_gts):
+        for right_img_path, right_gt_path in zip(self.right_images,
+                                                 self.right_gts):
             right_img = Image.open(right_img_path)
             right_gt = Image.open(right_gt_path)
 
@@ -167,7 +181,8 @@ class SalObjDataset(data.Dataset):
         if h < self.trainsize or w < self.trainsize:
             h = max(h, self.trainsize)
             w = max(w, self.trainsize)
-            return img.resize((w, h), Image.BILINEAR), gt.resize((w, h), Image.NEAREST)
+            return img.resize((w, h), Image.BILINEAR), gt.resize((w, h),
+                                                                 Image.NEAREST)
         else:
             return img, gt
 
@@ -176,7 +191,13 @@ class SalObjDataset(data.Dataset):
 
 
 # dataloader for training
-def get_loader(right_image_root, right_gt_root, batchsize, trainsize, shuffle=True, num_workers=12, pin_memory=True):
+def get_loader(right_image_root,
+               right_gt_root,
+               batchsize,
+               trainsize,
+               shuffle=True,
+               num_workers=12,
+               pin_memory=True):
     dataset = SalObjDataset(right_image_root, right_gt_root, trainsize)
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batchsize,
@@ -188,39 +209,49 @@ def get_loader(right_image_root, right_gt_root, batchsize, trainsize, shuffle=Tr
 
 # test dataset and loader
 
+
 class test_dataset:
-    def __init__(self, image_root,gt_root, testsize):
+
+    def __init__(self, image_root, gt_root, testsize):
         self.testsize = testsize
-        self.images = [image_root + f for f in os.listdir(image_root)  if f.endswith('.jpg')
-                    or f.endswith('.png')]
-        self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.jpg')
-                          or f.endswith('.png')]
+        self.images = [
+            image_root + f for f in os.listdir(image_root)
+            if f.endswith('.jpg') or f.endswith('.png')
+        ]
+        self.gts = [
+            gt_root + f for f in os.listdir(gt_root)
+            if f.endswith('.jpg') or f.endswith('.png')
+        ]
 
         self.images = sorted(self.images)
-        self.gts=sorted(self.gts)
+        self.gts = sorted(self.gts)
         self.transform = transforms.Compose([
             transforms.Resize((self.testsize, self.testsize)),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-            transforms.RandomVerticalFlip(p=0)])
+            transforms.RandomVerticalFlip(p=0)
+        ])
         self.gt_transform = transforms.Compose([
             transforms.Resize((self.testsize, self.testsize)),
-            transforms.ToTensor()])
+            transforms.ToTensor()
+        ])
         self.size = len(self.images)
         self.index = 0
 
     def load_data(self):
         image = self.rgb_loader(self.images[self.index])
-        gt=self.binary_loader(self.gts[self.index])
+        gt = self.binary_loader(self.gts[self.index])
+        print(np.unique(gt))
         HH = image.size[0]
         WW = image.size[1]
         image = self.transform(image).unsqueeze(0)
-        gt=self.gt_transform(gt).unsqueeze(0)
+        gt = self.gt_transform(gt).unsqueeze(0)
+        print(torch.unique(gt))
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
         self.index += 1
-        return image, gt,HH, WW, name
+        return image, gt, HH, WW, name
 
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
@@ -231,5 +262,3 @@ class test_dataset:
         with open(path, 'rb') as f:
             img = Image.open(f)
             return img.convert('L')
-
-
