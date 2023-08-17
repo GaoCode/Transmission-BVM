@@ -1,3 +1,3 @@
 cd sampling-based-BVM
-python -m pytest
+CUDA_VISIBLE_DEVICES=1 python -m pytest --capture=no
 cd ..

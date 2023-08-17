@@ -18,8 +18,14 @@ class SamplingBVM():
         generator.eval()
         self.generator = generator
 
-        dis_model = FCDiscriminator(ndf=64)
-        dis_model.load_state_dict(torch.load(model_path))
-        dis_model.cuda()
-        dis_model.eval()
-        self.dis_model = dis_model
+    def process_one_image(self, image, WW, HH):
+        image = image.cuda()
+
+        """get one prediction"""
+        pred = self.generator(image, training=False)
+        pred = pred.sigmoid()
+        pred = F.upsample(pred, size=[WW, HH], mode='bilinear', align_corners=False)
+        pred = pred.sigmoid().data.cpu().numpy().squeeze()
+        pred = 255 * (pred - pred.min()) / (pred.max() - pred.min() + 1e-8)
+
+        return pred
