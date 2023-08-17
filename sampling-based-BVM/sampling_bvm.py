@@ -32,5 +32,6 @@ class SamplingBVM():
         pred[pred >= 0.5] = 1
         pred[pred < 0.5] = 0
         pred = 255 * pred
+        pred = pred.astype(int)
 
         return pred
