@@ -274,7 +274,7 @@ class Saliency_feat_decoder(nn.Module):
         conv2_feat = F.dropout(self.conv2(x2), p=0.3, training=True)
         conv3_feat = F.dropout(self.conv3(x3), p=0.3, training=True)
         conv4_feat = F.dropout(self.conv4(x4), p=0.3, training=True)
-        conv4_feat=torch.cat((conv4_feat,z_noise),1)#32+8
+        conv4_feat=torch.cat((conv4_feat,z_noise.float()),1)#32+8
         conv4_feat = self.noise_conv(conv4_feat)  # 32
         
         conv4_feat = self.upsample2(conv4_feat)

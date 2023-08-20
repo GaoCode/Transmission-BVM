@@ -6,7 +6,7 @@ import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image, ImageEnhance
-
+from numpy import array, exp
 
 # several data augumentation strategies
 def cv_random_flip(img_r, label_r):
@@ -241,12 +241,10 @@ class test_dataset:
     def load_data(self):
         image = self.rgb_loader(self.images[self.index])
         gt = self.binary_loader(self.gts[self.index])
-        print(np.unique(gt))
         HH = image.size[0]
         WW = image.size[1]
         image = self.transform(image).unsqueeze(0)
         gt = self.gt_transform(gt).unsqueeze(0)
-        print(torch.unique(gt))
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
@@ -262,3 +260,61 @@ class test_dataset:
         with open(path, 'rb') as f:
             img = Image.open(f)
             return img.convert('L')
+
+class ImageLoader:
+    def __init__(self, input_seg_size=480):
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize((input_seg_size, input_seg_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+                ),
+            ]
+        )
+
+    def process_input_segmentation(self, img_path):
+        image = self.rgb_loader(img_path)
+        HH = image.size[0]
+        WW = image.size[1]
+        image = self.transform(image).unsqueeze(0)
+        return image, HH, WW
+
+    def rgb_loader(self, path):
+        with open(path, "rb") as f:
+            img = Image.open(f)
+            return img.convert("RGB")
+
+    def binary_loader(self, path):
+        with open(path, "rb") as f:
+            img = Image.open(f)
+            return img.convert("L")
+
+
+
+class DetectorPostProcessor:
+    @staticmethod
+    def sigmoid(x):
+        return 1 / (1 + exp(-x))
+
+    def post_process_segmentation(self, pred):
+        pred = DetectorPostProcessor.sigmoid(pred)
+        print(
+            np.max(pred), 
+            np.min(pred), 
+            pred.size, 
+            pred.shape,
+            np.isnan(pred).any())
+
+        pred = pred.squeeze()
+        pred = (pred - pred.min()) / (pred.max() - pred.min() + 1e-8)
+        pred[pred >= 0.5] = 1
+        pred[pred < 0.5] = 0
+        pred = pred.astype(int)
+        print(
+            np.max(pred), 
+            np.min(pred), 
+            pred.size, 
+            pred.shape,
+            np.isnan(pred).any())
+        return pred

@@ -3,17 +3,17 @@ import numpy as np
 
 class Evaluator():
 
-    def segmentation_iou(self, pred, gt):
+    def segmentation_iou(self, pred, gt, label=255):
         print(type(pred), type(gt))
         print(np.shape(pred), np.shape(gt))
         print(np.unique(pred), np.unique(gt))
 
-        TP = np.sum((gt == 255) & (pred == 255))
-        FP = np.sum((gt != 255) & (pred == 255))
-        FN = np.sum((gt == 255) & (pred != 255))
+        TP = np.sum((gt == label) & (pred == label))
+        FP = np.sum((gt != label) & (pred == label))
+        FN = np.sum((gt == label) & (pred != label))
 
-        print(np.sum(gt == 255), np.sum(gt == 0), np.sum(gt != 255),
-              np.sum(pred == 255))
+        print(np.sum(gt == label), np.sum(gt == 0), np.sum(gt != label),
+              np.sum(pred == label))
         print(np.max(gt))
 
         print(TP, FP, FN)

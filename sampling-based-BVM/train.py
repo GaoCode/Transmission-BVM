@@ -17,6 +17,7 @@ from tools import *
 from visualisation import *
 
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--epoch', type=int, default=50, help='epoch number')
 parser.add_argument('--lr_gen', type=float, default=2.5e-5, help='learning rate for generator')
@@ -28,6 +29,9 @@ parser.add_argument('--decay_epoch', type=int, default=40, help='every n epochs 
 parser.add_argument('--feat_channel', type=int, default=32, help='reduced channel of saliency feat')
 parser.add_argument('--modal_loss', type=float, default=0.5, help='weight of the fusion modal')
 parser.add_argument('--dis_start_epoch', type=int, default=5, help='start epoch of discriminator')
+parser.add_argument('--image_root', type=str, default="", help='training image')
+parser.add_argument('--gt_root', type=str, default="", help='training gt')
+parser.add_argument('--output_path', type=str, default="", help='output path')
 
 reg_weight=1e-4
 latent_weight=10.0
@@ -47,15 +51,8 @@ predictive_net_params = predictive_net.parameters()
 predictive_net_optimizer = torch.optim.Adam(predictive_net_params, opt.lr_dis)
 
 ## synthetic ##
-
-
-##SMOKE5K ##
-image_root='/home/users/u5155914/projects/SMOKE5K/train/img/'
-gt_root='/home/users/u5155914/projects/SMOKE5K/train/gt/'
-# image_root='/dataset/img/'
-# gt_root='/dataset/img/'
-
-train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize, trainsize=opt.trainsize)
+print(opt.image_root, opt.gt_root)
+train_loader = get_loader(opt.image_root, opt.gt_root, batchsize=opt.batchsize, trainsize=opt.trainsize)
 total_step = len(train_loader)
 
 CE = torch.nn.BCELoss()
@@ -152,7 +149,7 @@ for epoch in range(1, (opt.epoch+1)):
             predictive_net_optimizer.step()
             
 
-            folder_path = 'visual_map_final/vis_e' + str(epoch) + '/'
+            folder_path = opt.output_path + '/visual_map_final/vis_e' + str(epoch) + '/'
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             if i == 1:  # only save the first batch for each epoch
@@ -172,7 +169,7 @@ for epoch in range(1, (opt.epoch+1)):
 
     adjust_lr(generator_optimizer, opt.lr_gen, epoch, opt.decay_rate, opt.decay_epoch)
 
-    save_path = 'models_final/'
+    save_path = opt.output_path + '/models_final/'
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
